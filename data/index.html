@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>2025年インフルエンザ流行状況（日本）</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Roboto,"Noto Sans JP",sans-serif;margin:0;line-height:1.6;color:#222}
+    header,main,footer{padding:16px} .wrap{max-width:960px;margin:0 auto}
+    h1{margin:0 0 8px;font-size:1.25rem}
+    .card{background:#fff;border:1px solid #eee;border-radius:12px;padding:16px;box-shadow:0 1px 2px rgba(0,0,0,.03)}
+    canvas{width:100%;height:360px}
+    table{width:100%;border-collapse:collapse;font-size:.95rem} th,td{border-bottom:1px solid #eee;padding:8px;text-align:left}
+  </style>
+</head>
+<body>
+  <header class="wrap">
+    <h1>2025年インフルエンザ流行状況（日本）</h1>
+    <div>最終更新：<span id="updated">-</span> ／ 単位：人/定点</div>
+  </header>
+
+  <main class="wrap">
+    <section class="card" style="margin-bottom:16px;">
+      <h2 style="margin-top:0;">週別推移</h2>
+      <canvas id="chart"></canvas>
+    </section>
+
+    <section class="card">
+      <h2 style="margin-top:0;">データ（2025）</h2>
+      <div style="overflow:auto;">
+        <table id="tbl"><thead>
+          <tr><th>週</th><th>開始</th><th>終了</th><th>人/定点</th><th>コメント</th></tr>
+        </thead><tbody></tbody></table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap" style="color:#666;font-size:.9rem">
+    出典：公的機関の週報等（本サイトは医療的助言を目的としません）
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    async function loadCSV(url){
+      const t = await (await fetch(url, {cache:'no-store'})).text();
+      return t.trim().split(/\r?\n/).map(r=>r.split(',').map(s=>s.replace(/^"|"$/g,'')));
+    }
+    (async ()=>{
+      const rows = await loadCSV('data/influenza_2025.csv');
+      const [head, ...data] = rows;
+      const idx = (k)=>head.indexOf(k);
+      const iw = idx('week'), is = idx('start_date'), ie = idx('end_date'), iv = idx('cases_per_sentinel'), ic = idx('comment');
+
+      const weeks = data.map(r=>r[iw]);
+      const starts = data.map(r=>r[is]);
+      const ends = data.map(r=>r[ie]);
+      const values = data.map(r=>parseFloat(r[iv]||''));
+      const comments = data.map(r=>r[ic]||'');
+
+      // 更新日
+      document.getElementById('updated').textContent = ends.filter(Boolean).slice(-1)[0] || '-';
+
+      // 表
+      const tb = document.querySelector('#tbl tbody');
+      tb.innerHTML = data.map((r,i)=>`<tr>
+        <td>第${weeks[i]}週</td><td>${starts[i]}</td><td>${ends[i]}</td><td>${values[i]||''}</td><td>${comments[i]}</td>
+      </tr>`).join('');
+
+      // グラフ
+      const ctx = document.getElementById('chart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: { labels: weeks.map(w=>`第${w}週`), datasets: [{ label:'定点当たり報告数', data: values, tension:.3, pointRadius:3 }] },
+        options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} },
+          scales:{ x:{ title:{ display:true, text:'週'} }, y:{ beginAtZero:true, title:{ display:true, text:'人/定点'} } } }
+      });
+    })();
+  </script>
+</body>
+</html>
